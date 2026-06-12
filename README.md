@@ -38,11 +38,11 @@ Para ejecutar este proyecto localmente, necesitas tener instalado **R** y **RStu
    remotes::install_github("statsbomb/StatsBombR")
    ```
 
-3. Abre el archivo `app.R` y haz clic en el botón **"Run App"** (o ejecuta `shiny::runApp()`).
+3. Abre el archivo `Shiny App` y haz clic en el botón **"Run App"** (o ejecuta `shiny::runApp()`).
 
 ## 📁 Estructura del Proyecto
 
-- `app.R`: Archivo principal que contiene la interfaz de usuario (UI), la lógica del servidor (Server) y las funciones de extracción de datos.
+- `Shiny App`: Archivo principal que contiene la interfaz de usuario (UI), la lógica del servidor (Server) y las funciones de extracción de datos.
 - `README.md`: Documentación del proyecto (este archivo).
 
 ## 📝 Próximas Mejoras (Roadmap)
