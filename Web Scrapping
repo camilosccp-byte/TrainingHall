@@ -1,0 +1,95 @@
+# install.packages("remotes")
+# remotes::install_github("statsbomb/StatsBombR")
+library(StatsBombR)
+library(tidyverse)
+
+obtener_metricas_statsbomb <- function() {
+  # 1. Obtener partidos libres de StatsBomb
+  competiciones <- FreeCompetitions()
+  partidos <- FreeMatches(competiciones)
+  
+  # Filtramos por ejemplo los eventos de un torneo disponible (Catar 2022 ID: 43)
+  partidos_catar <- partidos %>% filter(competition.competition_id == 43)
+  
+  # Extraemos los eventos detallados (pases, tiros, intercepciones, etc.)
+  eventos <- free_allevents(MatchesDF = partidos_catar, Parallel = TRUE)
+  
+  # Limpiamos y formateamos la estructura interna de StatsBomb
+  eventos <- allclean(eventos)
+  
+  # 2. Calcular promedios estandarizados por jugador
+  metricas_jugadores <- eventos %>%
+    group_by(player.name, position.name) %>%
+    summarise(
+      Goles = sum(shot.outcome.name == "Goal", na.rm = TRUE),
+      Remates = sum(type.name == "Shot", na.rm = TRUE),
+      Pases_Clave = sum(pass.shot_assist == TRUE, na.rm = TRUE),
+      Intercepciones = sum(type.name == "Interception", na.rm = TRUE),
+      Partidos = n_distinct(match_id),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      Goles_PP = Goles / Partidos,
+      Remates_PP = Remates / Partidos,
+      Pases_Clave_PP = Pases_Clave / Partidos,
+      Intercepciones_PP = Intercepciones / Partidos
+    )
+  
+  # 3. Filtrar y agrupar por las posiciones deseadas para obtener los promedios de la "Liga"
+  promedios_liga <- metricas_jugadores %>%
+    filter(position.name %in% c("Center Forward", "Secondary Striker", "Center Midfield", "Central Midfield")) %>%
+    mutate(Posicion_Simplificada = ifelse(str_detect(position.name, "Striker|Forward"), "Delantero Centro", "Volante Mixto")) %>%
+    group_by(Posicion_Simplificada) %>%
+    summarise(
+      Promedio_Goles = mean(Goles_PP, na.rm = TRUE),
+      Promedio_Remates = mean(Remates_PP, na.rm = TRUE),
+      Promedio_Pases_Clave = mean(Pases_Clave_PP, na.rm = TRUE),
+      Promedio_Intercepciones = mean(Intercepciones_PP, na.rm = TRUE)
+    )
+  
+  return(promedios_liga)
+}
+
+library(rvest)
+library(tidyverse)
+
+obtener_ejercicios_scraping <- function() {
+  # URL de ejemplo orientada a metodologías de entrenamiento
+  url <- "https://ejemplo-ejercicios-futbol.com"
+  
+  # Leemos el HTML de la página de forma segura
+  html_pagina <- tryCatch(
+    read_html(url),
+    error = function(e) {
+      # En caso de que la web caiga o no exista en el piloto, generamos un fallback (respaldo) estructurado
+      message("No se pudo conectar a la URL externa, usando respaldo de scraping local...")
+      return(read_html("
+        <table>
+          <tr><th>Posicion</th><th>Ejercicio</th><th>Metrica</th></tr>
+          <tr><td>Delantero Centro</td><td>Circuito de Definicion Expres</td><td>Goles</td></tr>
+          <tr><td>Delantero Centro</td><td>Ataque de Espacios Reducidos</td><td>Remates</td></tr>
+          <tr><td>Volante Mixto</td><td>Transicion Defensa-Ataque Alta Intensidad</td><td>Pases clave</td></tr>
+          <tr><td>Volante Mixto</td><td>Presion y Recuperacion Tras Perdida</td><td>Intercepciones</td></tr>
+        </table>
+      "))
+    }
+  )
+  
+  # Scrapeamos la tabla de ejercicios usando selectores CSS
+  tabla_ejercicios <- html_pagina %>%
+    html_element("table") %>%
+    html_table()
+  
+  # Modificamos los nombres de columnas para que coincidan con nuestra estructura de R
+  colnames(tabla_ejercicios) <- c("posicion", "nombre", "metrica_clave")
+  
+  # Transformamos la tabla scrapeada en una lista estructurada para Shiny
+  lista_entrenamientos <- split(tabla_ejercicios, tabla_ejercicios$posicion)
+  
+  # Formateamos sub-listas por posición
+  database_formateada <- lapply(lista_entrenamientos, function(df) {
+    lapply(1:nrow(df), function(i) list(nombre = df$nombre[i], metrica_clave = df$metrica_clave[i]))
+  })
+  
+  return(database_formateada)
+}

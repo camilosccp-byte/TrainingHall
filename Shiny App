@@ -13,6 +13,24 @@ TRAINING_DATABASE <- list(
   )
 )
 
+library(shiny)
+library(bslib)
+library(rvest)
+library(StatsBombR)
+
+# === CARGA AUTOMÁTICA DE DATOS AL INICIAR LA APP ===
+# Extrae los entrenamientos mediante scraping
+TRAINING_DATABASE <- obtener_ejercicios_scraping()
+
+# Extrae las métricas reales de la liga a través de StatsBomb
+PROMEDIOS_LIGA_SB <- obtener_metricas_statsbomb()
+
+# Extraemos los valores exactos calculados para usarlos como umbral automático
+UMBRAL_GOLES <- PROMEDIOS_LIGA_SB$Promedio_Goles[PROMEDIOS_LIGA_SB$Posicion_Simplificada == "Delantero Centro"]
+UMBRAL_REMATES <- PROMEDIOS_LIGA_SB$Promedio_Remates[PROMEDIOS_LIGA_SB$Posicion_Simplificada == "Delantero Centro"]
+# ... haces lo mismo para el Volante Mixto.
+
+
 # 2. Interfaz de Usuario (UI)
 ui <- page_fluid(
   theme = bs_theme(version = 5, bootswatch = "minty"), # Tema visual limpio
