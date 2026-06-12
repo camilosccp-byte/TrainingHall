@@ -1,0 +1,108 @@
+library(shiny)
+library(bslib)
+
+# 1. Base de datos piloto (2 entrenamientos por posición)
+TRAINING_DATABASE <- list(
+  "Delantero Centro" = list(
+    list(nombre = "Circuito de Definición Exprés", metrica_clave = "Goles por partido (G/P)"),
+    list(nombre = "Ataque de Espacios Reducidos", metrica_clave = "Remates a puerta")
+  ),
+  "Volante Mixto" = list(
+    list(nombre = "Transición Defensa-Ataque de Alta Intensidad", metrica_clave = "Pases clave"),
+    list(nombre = "Presión y Recuperación Tras Pérdida", metrica_clave = "Intercepciones")
+  )
+)
+
+# 2. Interfaz de Usuario (UI)
+ui <- page_fluid(
+  theme = bs_theme(version = 5, bootswatch = "minty"), # Tema visual limpio
+  
+  titlePanel("Recomendador de Entrenamientos - Piloto Liga"),
+  
+  layout_sidebar(
+    sidebar = sidebar(
+      title = "Configuración",
+      
+      # Selección de posición
+      selectInput(
+        "posicion", 
+        "Selecciona la Posición del Jugador:", 
+        choices = names(TRAINING_DATABASE)
+      ),
+      
+      # Inputs condicionales para Delantero Centro
+      conditionalPanel(
+        condition = "input.posicion == 'Delantero Centro'",
+        numericInput("goles", "Promedio Goles por Partido (G/P):", value = 0.5, min = 0, step = 0.1),
+        numericInput("remates", "Promedio Remates a Puerta:", value = 3.0, min = 0, step = 0.5)
+      ),
+      
+      # Inputs condicionales para Volante Mixto
+      conditionalPanel(
+        condition = "input.posicion == 'Volante Mixto'",
+        numericInput("pases_clave", "Promedio Pases Clave por Partido:", value = 2.0, min = 0, step = 0.5),
+        numericInput("intercepciones", "Promedio Intercepciones por Partido:", value = 4.0, min = 0, step = 0.5)
+      ),
+      
+      actionButton("calcular", "Generar Recomendación", class = "btn-primary w-100")
+    ),
+    
+    # Panel Principal de Resultados
+    card(
+      card_header("Entrenamientos Recomendados para la Liga"),
+      uiOutput("resultado_entrenamientos")
+    )
+  )
+)
+
+# 3. Lógica del Servidor (Server)
+server <- function(input, output, session) {
+  
+  # Evento reactivo que espera el clic del botón
+  recomendacion <- eventReactive(input$calcular, {
+    pos <- input$posicion
+    entrenamientos <- TRAINING_DATABASE[[pos]]
+    html_output <- list()
+    
+    if (pos == "Delantero Centro") {
+      # Lógica piloto: Si está por debajo del umbral estándar, se asigna el entrenamiento
+      if (input$goles < 0.4) {
+        html_output <- c(html_output, list(tags$p(tags$b("Recomendado: "), entrenamientos[[1]]$nombre, 
+                         tags$em(" (Prioridad por bajo promedio en ", entrenamientos[[1]]$metrica_clave, ")"))))
+      }
+      if (input$remates < 2.5) {
+        html_output <- c(html_output, list(tags$p(tags$b("Recomendado: "), entrenamientos[[2]]$nombre, 
+                         tags$em(" (Prioridad por bajo promedio en ", entrenamientos[[2]]$metrica_clave, ")"))))
+      }
+      
+    } else if (pos == "Volante Mixto") {
+      if (input$pases_clave < 1.5) {
+        html_output <- c(html_output, list(tags$p(tags$b("Recomendado: "), entrenamientos[[1]]$nombre, 
+                         tags$em(" (Prioridad por bajo promedio en ", entrenamientos[[1]]$metrica_clave, ")"))))
+      }
+      if (input$intercepciones < 3.5) {
+        html_output <- c(html_output, list(tags$p(tags$b("Recomendado: "), entrenamientos[[2]]$nombre, 
+                         tags$em(" (Prioridad por bajo promedio en ", entrenamientos[[2]]$metrica_clave, ")"))))
+      }
+    }
+    
+    # Si los promedios son óptimos y no se activa ninguna alerta
+    if (length(html_output) == 0) {
+      return(tags$p("Los promedios están sobre la media óptima de la liga. Se sugiere mantener entrenamientos de mantenimiento general."))
+    }
+    
+    return(tagList(html_output))
+  })
+  
+  # Renderizar la interfaz de salida
+  output::resultado_entrenamientos <- renderUI({
+    # Mensaje inicial antes de presionar el botón
+    if (input$calcular == 0) {
+      return(tags$p("Modifica los valores promedio y haz clic en 'Generar Recomendación'."))
+    }
+    recomendacion()
+  })
+}
+
+# 4. Ejecución de la aplicación
+shinyApp(ui = ui, server = server)
