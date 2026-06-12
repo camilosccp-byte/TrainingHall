@@ -29,7 +29,7 @@ Para ejecutar este proyecto localmente, necesitas tener instalado **R** y **RStu
 
 1. Clona este repositorio en tu computadora:
    ```bash
-   git clone https://github.com
+   git clone https://github.com/camilosccp-byte/TrainingHall.git
    ```
 
 2. Abre RStudio e instala los paquetes necesarios ejecutando el siguiente código en la consola:
